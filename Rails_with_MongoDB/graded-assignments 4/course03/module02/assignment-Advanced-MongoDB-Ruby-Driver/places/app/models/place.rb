@@ -68,17 +68,20 @@ class Place
     end
 
     def self.get_address_components(sort = {}, offset = 0, limit = 0)
-        Place.collection.find().aggregate([{:$sort => sort}, {:$project => {:address_components=> 1, :formatted_address => 1, 'geometry.geolocation' => 1}}, {:$unwind => '$address_components'},  {:$skip => offset}, {:$limit => limit}])
+        Place.collection.find().aggregate([{:$sort => sort}, {:$project => {:address_components=> 1, :formatted_address => 1, 
+            'geometry.geolocation' => 1}}, {:$unwind => '$address_components'},  {:$skip => offset}, {:$limit => limit}])
     end
 
     def self.get_country_names
-        query = Place.collection.find().aggregate([{:$project => {:_id => 0, 'address_components.long_name' => 1, 'address_components.types' => 1}}, {:$unwind => '$address_components'}, {:$unwind => '$address_components.types'}, {:$match => {'address_components.types' => 'country'}}, {:$group => {:_id => '$address_components.long_name'}}]).to_a 
+        query = Place.collection.find().aggregate([{:$project => {:_id => 0, 'address_components.long_name' => 1, 
+            'address_components.types' => 1}}, {:$unwind => '$address_components'}, {:$unwind => '$address_components.types'}, 
+            {:$match => {'address_components.types' => 'country'}}, {:$group => {:_id => '$address_components.long_name'}}]).to_a 
         query.map {|h| h[:_id]}
     end
 
     def self.find_ids_by_country_code(country_code)
-        
-
+        Place.collection.find().aggregate([{:$match => {'address_components.short_name' => country_code}},
+             {:$match => {'address_components.types' => 'country'}}, {:$project => {:_id => 1}}]).to_a.map{|doc| doc[:_id].to_s}
     end
 
 end
