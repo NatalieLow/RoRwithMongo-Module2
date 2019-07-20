@@ -6,8 +6,10 @@ class Place
         unless params.nil?
             @id = params[:_id].to_s 
 
-            (params[:address_components]).each do |ac|
-                @address_components << AddressComponent.new(ac)
+            unless (params[:address_components]).nil? 
+                (params[:address_components]).each do |ac|
+                    @address_components << AddressComponent.new(ac)
+                end
             end
 
             @formatted_address = params[:formatted_address]
@@ -84,4 +86,32 @@ class Place
              {:$match => {'address_components.types' => 'country'}}, {:$project => {:_id => 1}}]).to_a.map{|doc| doc[:_id].to_s}
     end
 
+    def self.create_indexes
+        Place.collection.indexes.create_one({'geometry.geolocation' => "2dsphere"}) 
+        # Mongo::Index::GEO2DSPHERE
+    end
+
+    def self.remove_indexes
+        Place.collection.indexes.drop_one("geometry.geolocation_2dsphere")
+    end
+
+    def self.near(point, max_meters = nil)
+        if max_meters.nil?
+            Place.collection.find("geometry.geolocation" => {:$near => {:$geometry => point.to_hash}})
+        else
+            Place.collection.find("geometry.geolocation" => {:$near => {:$geometry => point.to_hash, :$maxDistance => max_meters }})
+        end 
+    end
+
+    def near(max_meters = nil)
+        if max_meters.nil?
+            coll = Place.collection.find("geometry.geolocation" => {:$near => {:$geometry => self.location.to_hash}})
+        else
+            coll = Place.collection.find("geometry.geolocation" => {:$near => {:$geometry => self.location.to_hash, 
+                :$maxDistance => max_meters }})
+        end 
+
+        Place.to_places(coll)
+
+    end
 end
