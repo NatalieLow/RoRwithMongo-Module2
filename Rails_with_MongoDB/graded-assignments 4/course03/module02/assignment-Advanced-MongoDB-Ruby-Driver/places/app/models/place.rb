@@ -1,4 +1,5 @@
 class Place
+    
     attr_accessor :id, :formatted_address, :location, :address_components
 
     def initialize(params)
@@ -15,7 +16,6 @@ class Place
             @formatted_address = params[:formatted_address]
             @location = Point.new(params[:geometry][:geolocation])
         end
-        
     end
 
     def self.mongo_client
