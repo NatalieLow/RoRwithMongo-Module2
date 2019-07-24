@@ -1,8 +1,8 @@
 require 'exifr/jpeg'
 
-
 class Photo
-    attr_accessor :id, :location
+
+    attr_accessor :id, :location, :place
     attr_writer :contents
 
     def self.mongo_client
@@ -18,6 +18,9 @@ class Photo
             unless (params[:metadata][:location]).nil?
                 @location = Point.new(params[:metadata][:location])
             end
+            unless (params[:metadata][:place]).nil?
+                @place = params[:metadata][:place]
+            end
         end
     end
 
@@ -31,14 +34,14 @@ class Photo
 
     def save
         if self.persisted?
-            Photo.mongo_client.database.fs.find(self.class.id_criteria(@id)).update_one(:$set =>{'metadata.location' => @location.to_hash})
+            Photo.mongo_client.database.fs.find(self.class.id_criteria(@id)).update_one(:$set =>{'metadata.location' => @location.to_hash, 'metadata.place' => @place})
         else
             gps = EXIFR::JPEG.new(@contents).gps
             @location = Point.new(:lng=>gps.longitude, :lat=>gps.latitude)
             @contents.rewind 
             description = {}
             description[:content_type] = 'image/jpeg'
-            description[:metadata] = {:location=>@location.to_hash}
+            description[:metadata] = {:location=>@location.to_hash, :place => @place}
             grid_file = Mongo::Grid::File.new(@contents.read, description)
             @id = Photo.mongo_client.database.fs.insert_one(grid_file).to_s
         end
@@ -82,4 +85,34 @@ class Photo
 
         query.nil? ? nil : query
     end
+
+    def place #getter
+        @place.nil? ? nil : Place.find(@place)
+    end
+
+    def place=(place) #setter
+        case 
+        when place.is_a?(Place)
+            @place = BSON::ObjectId.from_string(place.id)
+        when place.is_a?(String)
+            @place = BSON::ObjectId.from_string(place) 
+        when place.is_a?(BSON::ObjectId)
+            @place = place
+        else
+            @place = nil
+        end
+    end
+
+    def self.find_photos_for_place(place_id)
+        case 
+        when place_id.is_a?(BSON::ObjectId)
+            query = Photo.mongo_client.database.fs.find('metadata.place' => place_id)
+        when place_id.is_a?(String)
+            query = Photo.mongo_client.database.fs.find('metadata.place' => BSON::ObjectId.from_string(place_id))
+        else
+            query = nil
+        end
+        return query
+    end
+
 end

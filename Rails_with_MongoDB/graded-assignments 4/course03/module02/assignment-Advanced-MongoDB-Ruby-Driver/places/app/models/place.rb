@@ -1,5 +1,4 @@
 class Place
-    
     attr_accessor :id, :formatted_address, :location, :address_components
 
     def initialize(params)
@@ -112,6 +111,14 @@ class Place
         end 
 
         Place.to_places(coll)
+    end
 
+    def photos(offset = 0, limit = 0)
+        query = Photo.find_photos_for_place(@id).skip(offset).limit(limit)
+        photos = []
+        query.each do |result|
+            photos << Photo.find(result[:_id])
+        end
+        return photos
     end
 end
