@@ -74,9 +74,13 @@ class Place
         end
     end
 
-    def self.get_address_components(sort = {}, offset = 0, limit = 0)
-        Place.collection.find().aggregate([{:$sort => sort}, {:$project => {:address_components=> 1, :formatted_address => 1, 
-            'geometry.geolocation' => 1}}, {:$unwind => '$address_components'},  {:$skip => offset}, {:$limit => limit}])
+    def self.get_address_components(sort = {}, offset = nil, limit = nil)
+        core = [{:$project => {:address_components=> 1, :formatted_address => 1, 'geometry.geolocation' => 1}}, {:$unwind => '$address_components'}]
+        core.unshift({:$sort => sort}) unless sort.empty?
+        core << ({:$skip => offset}) unless offset.nil?
+        core << ({:$limit => limit}) unless limit.nil?
+        
+        Place.collection.find().aggregate(core) 
     end
 
     def self.get_country_names
